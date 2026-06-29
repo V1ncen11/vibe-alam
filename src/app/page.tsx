@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef, useState } from "react";
+import { motion, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion";
+import { useRef, useState, useEffect } from "react";
 
 export default function Home() {
   const containerRef = useRef(null);
@@ -14,18 +14,37 @@ export default function Home() {
     offset: ["start start", "end start"],
   });
 
-  // Parallax effects for the hero background
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
-  const scale = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
-  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  // Parallax effects for the hero background with Spring for mobile smoothness
+  const smoothProgress = useSpring(scrollYProgress, { damping: 30, stiffness: 100, mass: 0.5 });
+  const y = useTransform(smoothProgress, [0, 1], ["0%", "30%"]);
+  const scale = useTransform(smoothProgress, [0, 1], [1, 1.1]);
+  const opacity = useTransform(smoothProgress, [0, 0.8], [1, 0]);
 
-  // Mask reveal variant for text
+  // Interactive Sun/Lens Flare tracking mouse
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 2;
+      const y = (e.clientY / window.innerHeight - 0.5) * 2;
+      mouseX.set(x);
+      mouseY.set(y);
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [mouseX, mouseY]);
+
+  const flareX = useTransform(mouseX, [-1, 1], ["40px", "-40px"]);
+  const flareY = useTransform(mouseY, [-1, 1], ["40px", "-40px"]);
+
+  // Mask reveal variant for text with delayed entrance waiting for Preloader
   const slideUp: any = {
     hidden: { y: "100%", opacity: 0 },
     visible: (custom = 0) => ({
       y: 0,
       opacity: 1,
-      transition: { duration: 0.8, ease: "easeOut", delay: custom }
+      transition: { duration: 0.8, ease: "easeOut", delay: custom + 2.5 }
     })
   };
 
@@ -49,13 +68,34 @@ export default function Home() {
       <div ref={containerRef} className="relative min-h-screen flex flex-col w-full overflow-hidden">
         {/* Background Image with Overlay - Parallax Applied */}
         <motion.div style={{ y, scale, opacity }} className="absolute inset-0 z-0 transform-gpu">
-          <Image
-            src="/hero.jpg"
-            alt="Curug Badak Background"
-            fill
-            priority
-            className="object-cover object-center"
-          />
+          {/* Inner motion div for continuous floating effect */}
+          <motion.div 
+            initial={{ scale: 1.1, opacity: 0 }}
+            animate={{ 
+              scale: 1, 
+              opacity: 1,
+              y: ["-10px", "10px", "-10px"] 
+            }}
+            transition={{ 
+              scale: { duration: 2.5, delay: 2.0, ease: "easeOut" },
+              opacity: { duration: 2.5, delay: 2.0, ease: "easeOut" },
+              y: { duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2.0 }
+            }}
+            className="w-full h-full relative"
+          >
+            <Image
+              src="/hero.jpg"
+              alt="Curug Badak Background"
+              fill
+              priority
+              className="object-cover object-center"
+            />
+            {/* Interactive Sun Flare effect */}
+            <motion.div 
+              className="absolute top-1/2 left-1/2 w-[200px] h-[200px] md:w-[350px] md:h-[350px] bg-white/40 blur-[40px] rounded-full pointer-events-none mix-blend-overlay"
+              style={{ x: flareX, y: flareY, translateX: "-50%", translateY: "-50%" }}
+            />
+          </motion.div>
           {/* Smooth fog gradient from top down to blend the image into a white sky for the text */}
           <div className="absolute inset-0 bg-gradient-to-b from-white/45 via-white/15 to-transparent pointer-events-none" />
         </motion.div>

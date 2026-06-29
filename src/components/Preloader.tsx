@@ -29,16 +29,18 @@ export default function Preloader() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ y: "-100%", opacity: 0 }}
               transition={{ duration: 1.2, ease: "easeInOut" }}
-              className="font-display text-2xl md:text-4xl text-slate-900 tracking-[0.2em] flex items-center"
+              className="flex items-center gap-2 text-3xl md:text-4xl font-medium tracking-tight text-slate-900"
             >
-              <span className="font-bold">CU</span>
+              <svg width="42" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" className="text-slate-900">
+                <path d="M 14 2 L 14 18 C 14 24 22 24 22 18 C 22 12 14 12 14 12" />
+                <path d="M 10 12 C 2 12 2 18 10 18 L 14 18" />
+              </svg>
               <motion.span 
                 initial={{ color: "#0f172a" }}
                 animate={{ color: "#64748b" }}
                 transition={{ delay: 1, duration: 0.8, ease: "easeInOut" }}
-                className="font-light ml-2"
               >
-                BA
+                cuba
               </motion.span>
             </motion.div>
           </div>

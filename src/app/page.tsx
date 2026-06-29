@@ -2,12 +2,92 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion";
-import { useRef, useState, useEffect } from "react";
+import { motion, useScroll, useTransform, useSpring, useMotionValue, useInView, useMotionValueEvent } from "framer-motion";
+import { useRef, useState, useEffect, useCallback } from "react";
+
+// Counter Animation Component
+function AnimatedCounter({ target, suffix = "", duration = 2 }: { target: number; suffix?: string; duration?: number }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  useEffect(() => {
+    if (!isInView) return;
+    let start = 0;
+    const increment = target / (duration * 60);
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= target) {
+        setCount(target);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(start));
+      }
+    }, 1000 / 60);
+    return () => clearInterval(timer);
+  }, [isInView, target, duration]);
+
+  return <span ref={ref}>{count}{suffix}</span>;
+}
+
+// Image Reveal Component
+function RevealImage({ children, direction = "left" }: { children: React.ReactNode; direction?: "left" | "right" | "up" }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
+  
+  const clipPaths: Record<string, { hidden: string; visible: string }> = {
+    left: { hidden: "inset(0 100% 0 0)", visible: "inset(0 0% 0 0)" },
+    right: { hidden: "inset(0 0 0 100%)", visible: "inset(0 0 0 0%)" },
+    up: { hidden: "inset(100% 0 0 0)", visible: "inset(0% 0 0 0)" },
+  };
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ clipPath: clipPaths[direction].hidden, opacity: 0 }}
+      animate={isInView ? { clipPath: clipPaths[direction].visible, opacity: 1 } : {}}
+      transition={{ duration: 1.2, ease: [0.77, 0, 0.175, 1] }}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 export default function Home() {
   const containerRef = useRef(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("home");
+
+  // Track active section with IntersectionObserver
+  useEffect(() => {
+    const sections = ["home", "about", "destinations", "gallery", "contact"];
+    const observers: IntersectionObserver[] = [];
+
+    sections.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) setActiveSection(id);
+        },
+        { threshold: 0.3, rootMargin: "-80px 0px -50% 0px" }
+      );
+      observer.observe(el);
+      observers.push(observer);
+    });
+
+    return () => observers.forEach((o) => o.disconnect());
+  }, []);
+
+  // Smooth scroll handler
+  const handleNavClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+    e.preventDefault();
+    const el = document.getElementById(targetId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      setIsMobileMenuOpen(false);
+    }
+  }, []);
   
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -111,12 +191,27 @@ export default function Home() {
               cuba
             </div>
 
-            <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-700">
-              <Link href="#home" className="hover:text-black transition-colors">Home</Link>
-              <Link href="#about" className="hover:text-black transition-colors">About Us</Link>
-              <Link href="#destinations" className="hover:text-black transition-colors">Destinations</Link>
-              <Link href="#gallery" className="hover:text-black transition-colors">Gallery</Link>
-              <Link href="#contact" className="hover:text-black transition-colors">Contact Us</Link>
+            <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
+              {[
+                { id: "home", label: "Home" },
+                { id: "about", label: "About Us" },
+                { id: "destinations", label: "Destinations" },
+                { id: "gallery", label: "Gallery" },
+                { id: "contact", label: "Contact Us" },
+              ].map((item) => (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  onClick={(e) => handleNavClick(e, item.id)}
+                  className={`transition-all duration-300 ${
+                    activeSection === item.id
+                      ? "text-black"
+                      : "text-slate-400 hover:text-black"
+                  }`}
+                >
+                  {item.label}
+                </a>
+              ))}
             </nav>
 
             <button className="hidden md:flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-slate-800 transition-colors">
@@ -156,11 +251,24 @@ export default function Home() {
             transition={{ duration: 0.3 }}
             className="fixed inset-0 z-40 bg-white/95 backdrop-blur-xl flex flex-col items-center justify-center gap-8 md:hidden"
           >
-            <Link href="#home" onClick={() => setIsMobileMenuOpen(false)} className="text-3xl font-bold hover:text-slate-500 transition-colors">Home</Link>
-            <Link href="#about" onClick={() => setIsMobileMenuOpen(false)} className="text-3xl font-bold hover:text-slate-500 transition-colors">About Us</Link>
-            <Link href="#destinations" onClick={() => setIsMobileMenuOpen(false)} className="text-3xl font-bold hover:text-slate-500 transition-colors">Destinations</Link>
-            <Link href="#gallery" onClick={() => setIsMobileMenuOpen(false)} className="text-3xl font-bold hover:text-slate-500 transition-colors">Gallery</Link>
-            <Link href="#contact" onClick={() => setIsMobileMenuOpen(false)} className="text-3xl font-bold hover:text-slate-500 transition-colors">Contact Us</Link>
+            {[
+              { id: "home", label: "Home" },
+              { id: "about", label: "About Us" },
+              { id: "destinations", label: "Destinations" },
+              { id: "gallery", label: "Gallery" },
+              { id: "contact", label: "Contact Us" },
+            ].map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                onClick={(e) => handleNavClick(e, item.id)}
+                className={`text-3xl font-bold transition-colors ${
+                  activeSection === item.id ? "text-black" : "text-slate-400 hover:text-black"
+                }`}
+              >
+                {item.label}
+              </a>
+            ))}
           </motion.div>
 
           {/* Hero Section */}
@@ -230,16 +338,18 @@ export default function Home() {
           viewport={{ once: true, margin: "-100px" }}
           className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center"
         >
-          <motion.div variants={fadeUp} className="aspect-[4/5] bg-slate-100 rounded-3xl overflow-hidden relative shadow-2xl shadow-slate-200/50">
-            <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.7 }} className="w-full h-full">
-              <Image src="/about.jpg" alt="Curug Badak Waterfall" fill className="object-cover" />
+          <RevealImage direction="left">
+            <motion.div variants={fadeUp} className="aspect-[4/5] bg-slate-100 rounded-3xl overflow-hidden relative shadow-2xl shadow-slate-200/50">
+              <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.7 }} className="w-full h-full">
+                <Image src="/about.jpg" alt="Curug Badak Waterfall" fill className="object-cover" />
+              </motion.div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+              <div className="absolute bottom-6 left-6 text-white pointer-events-none">
+                <p className="font-bold text-xl">Since 1998</p>
+                <p className="text-sm opacity-90">Preserved Natural Heritage</p>
+              </div>
             </motion.div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
-            <div className="absolute bottom-6 left-6 text-white pointer-events-none">
-              <p className="font-bold text-xl">Since 1998</p>
-              <p className="text-sm opacity-90">Preserved Natural Heritage</p>
-            </div>
-          </motion.div>
+          </RevealImage>
           
           <motion.div variants={fadeUp}>
             <p className="text-sm font-bold tracking-widest text-slate-500 uppercase mb-4">
@@ -257,11 +367,11 @@ export default function Home() {
             
             <div className="grid grid-cols-2 gap-6 border-t border-slate-100 pt-10">
               <div>
-                <h4 className="text-3xl font-black text-slate-900 mb-2">40m</h4>
+                <h4 className="text-3xl font-black text-slate-900 mb-2"><AnimatedCounter target={40} suffix="m" /></h4>
                 <p className="text-slate-500 font-medium text-sm uppercase tracking-wider">Waterfall Height</p>
               </div>
               <div>
-                <h4 className="text-3xl font-black text-slate-900 mb-2">24°C</h4>
+                <h4 className="text-3xl font-black text-slate-900 mb-2"><AnimatedCounter target={24} suffix="°C" /></h4>
                 <p className="text-slate-500 font-medium text-sm uppercase tracking-wider">Average Temp</p>
               </div>
             </div>
@@ -385,36 +495,44 @@ export default function Home() {
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* Standard Image 1 */}
-            <motion.div variants={fadeUp} className="aspect-[3/4] bg-slate-100 rounded-3xl overflow-hidden relative group cursor-pointer shadow-sm">
-              <Image src="/galery1.png" alt="Gallery image 1" fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-700" />
-              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <span className="text-white text-sm font-medium tracking-widest border border-white/50 rounded-full px-6 py-2 backdrop-blur-sm">VIEW IMAGE</span>
-              </div>
-            </motion.div>
+            <RevealImage direction="up">
+              <motion.div variants={fadeUp} className="aspect-[3/4] bg-slate-100 rounded-3xl overflow-hidden relative group cursor-pointer shadow-sm">
+                <Image src="/galery1.png" alt="Gallery image 1" fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                  <span className="text-white text-sm font-medium tracking-widest border border-white/50 rounded-full px-6 py-2 backdrop-blur-sm">VIEW IMAGE</span>
+                </div>
+              </motion.div>
+            </RevealImage>
             
             {/* Standard Image 2 */}
-            <motion.div variants={fadeUp} className="aspect-[3/4] bg-slate-100 rounded-3xl overflow-hidden relative group cursor-pointer shadow-sm md:translate-y-8">
-              <Image src="/galery2.jpg" alt="Gallery image 2" fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-700" />
-              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <span className="text-white text-sm font-medium tracking-widest border border-white/50 rounded-full px-6 py-2 backdrop-blur-sm">VIEW IMAGE</span>
-              </div>
-            </motion.div>
+            <RevealImage direction="up">
+              <motion.div variants={fadeUp} className="aspect-[3/4] bg-slate-100 rounded-3xl overflow-hidden relative group cursor-pointer shadow-sm md:translate-y-8">
+                <Image src="/galery2.jpg" alt="Gallery image 2" fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                  <span className="text-white text-sm font-medium tracking-widest border border-white/50 rounded-full px-6 py-2 backdrop-blur-sm">VIEW IMAGE</span>
+                </div>
+              </motion.div>
+            </RevealImage>
             
             {/* Standard Image 3 */}
-            <motion.div variants={fadeUp} className="aspect-[3/4] bg-slate-100 rounded-3xl overflow-hidden relative group cursor-pointer shadow-sm">
-              <Image src="/galery3.jpg" alt="Gallery image 3" fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-700" />
-              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <span className="text-white text-sm font-medium tracking-widest border border-white/50 rounded-full px-6 py-2 backdrop-blur-sm">VIEW IMAGE</span>
-              </div>
-            </motion.div>
+            <RevealImage direction="up">
+              <motion.div variants={fadeUp} className="aspect-[3/4] bg-slate-100 rounded-3xl overflow-hidden relative group cursor-pointer shadow-sm">
+                <Image src="/galery3.jpg" alt="Gallery image 3" fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                  <span className="text-white text-sm font-medium tracking-widest border border-white/50 rounded-full px-6 py-2 backdrop-blur-sm">VIEW IMAGE</span>
+                </div>
+              </motion.div>
+            </RevealImage>
             
             {/* Standard Image 4 */}
-            <motion.div variants={fadeUp} className="aspect-[3/4] bg-slate-100 rounded-3xl overflow-hidden relative group cursor-pointer shadow-sm md:translate-y-8">
-              <Image src="/galery4.jpg" alt="Gallery image 4" fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-700" />
-              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <span className="text-white text-sm font-medium tracking-widest border border-white/50 rounded-full px-6 py-2 backdrop-blur-sm">VIEW IMAGE</span>
-              </div>
-            </motion.div>
+            <RevealImage direction="up">
+              <motion.div variants={fadeUp} className="aspect-[3/4] bg-slate-100 rounded-3xl overflow-hidden relative group cursor-pointer shadow-sm md:translate-y-8">
+                <Image src="/galery4.jpg" alt="Gallery image 4" fill unoptimized className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                  <span className="text-white text-sm font-medium tracking-widest border border-white/50 rounded-full px-6 py-2 backdrop-blur-sm">VIEW IMAGE</span>
+                </div>
+              </motion.div>
+            </RevealImage>
           </div>
           
           <div className="mt-16 text-center">
@@ -475,9 +593,32 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* Footer Section */}
-      <footer className="bg-slate-950 text-slate-400 py-12 px-8 border-t border-white/10">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+      {/* Immersive Footer Section */}
+      <footer className="relative bg-slate-950 text-slate-400 overflow-hidden">
+        {/* Big dramatic text */}
+        <div className="pt-24 pb-8 px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 60 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            className="max-w-6xl mx-auto"
+          >
+            <h2 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-white/10 leading-none select-none">
+              Let Nature
+              <br />
+              Speak.
+            </h2>
+          </motion.div>
+        </div>
+
+        {/* Divider */}
+        <div className="max-w-6xl mx-auto px-8">
+          <div className="w-full h-px bg-white/10" />
+        </div>
+
+        {/* Footer content */}
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 py-12 px-8">
           <div className="flex items-center gap-2 text-xl font-medium tracking-tight text-white">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" className="text-white">
               <path d="M 14 2 L 14 18 C 14 24 22 24 22 18 C 22 12 14 12 14 12" />

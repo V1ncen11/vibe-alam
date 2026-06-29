@@ -68,18 +68,15 @@ export default function Home() {
       <div ref={containerRef} className="relative min-h-screen flex flex-col w-full overflow-hidden">
         {/* Background Image with Overlay - Parallax Applied */}
         <motion.div style={{ y, scale, opacity }} className="absolute inset-0 z-0 transform-gpu">
-          {/* Inner motion div for continuous floating effect */}
+          {/* Inner motion div for Hero entrance */}
           <motion.div 
             initial={{ scale: 1.1, opacity: 0 }}
             animate={{ 
               scale: 1, 
-              opacity: 1,
-              y: ["-10px", "10px", "-10px"] 
+              opacity: 1
             }}
             transition={{ 
-              scale: { duration: 2.5, delay: 2.0, ease: "easeOut" },
-              opacity: { duration: 2.5, delay: 2.0, ease: "easeOut" },
-              y: { duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2.0 }
+              duration: 2.5, delay: 2.0, ease: "easeOut"
             }}
             className="w-full h-full relative"
           >

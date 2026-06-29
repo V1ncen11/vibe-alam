@@ -9,7 +9,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 function AnimatedCounter({ target, suffix = "", duration = 2 }: { target: number; suffix?: string; duration?: number }) {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const isInView = useInView(ref, { once: true, margin: "-10px" });
 
   useEffect(() => {
     if (!isInView) return;
@@ -33,7 +33,7 @@ function AnimatedCounter({ target, suffix = "", duration = 2 }: { target: number
 // Image Reveal Component
 function RevealImage({ children, direction = "left" }: { children: React.ReactNode; direction?: "left" | "right" | "up" }) {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-80px" });
+  const isInView = useInView(ref, { once: true, margin: "-10px" });
   
   const clipPaths: Record<string, { hidden: string; visible: string }> = {
     left: { hidden: "inset(0 100% 0 0)", visible: "inset(0 0% 0 0)" },
@@ -169,7 +169,7 @@ export default function Home() {
             />
             {/* Interactive Sun Flare effect */}
             <motion.div 
-              className="absolute top-1/2 left-1/2 w-[200px] h-[200px] md:w-[350px] md:h-[350px] bg-white/40 blur-[40px] rounded-full pointer-events-none mix-blend-overlay"
+              className="hidden md:block absolute top-1/2 left-1/2 w-[200px] h-[200px] md:w-[350px] md:h-[350px] bg-white/40 blur-[40px] rounded-full pointer-events-none mix-blend-overlay"
               style={{ x: flareX, y: flareY, translateX: "-50%", translateY: "-50%" }}
             />
           </motion.div>
